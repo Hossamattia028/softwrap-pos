@@ -183,8 +183,14 @@ app.delete('/api/products/:id', requireAuth, async (req, res) => {
 // Orders
 app.get('/api/orders', requireAuth, async (req, res) => {
   try {
-    const orders = await db.getAllOrders();
-    res.json({ success: true, orders });
+    const orders = db.getDb().prepare(`
+      SELECT o.*, u.username as user_name 
+      FROM orders o
+      LEFT JOIN users u ON o.user_id = u.id
+      ORDER BY o.created_at DESC
+      LIMIT 100
+    `).all();
+    res.json({ success: true, data: orders });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
   }
@@ -192,21 +198,95 @@ app.get('/api/orders', requireAuth, async (req, res) => {
 
 app.post('/api/orders', requireAuth, async (req, res) => {
   try {
-    const orderData = {
-      ...req.body,
-      userId: req.session.userId
-    };
-    const result = await db.createOrder(orderData);
-    res.json(result);
+    const { v4: uuidv4 } = require('uuid');
+    const orderData = req.body;
+    const orderId = uuidv4();
+    const orderNumber = 'ORD-' + Date.now();
+    
+    // Calculate totals
+    const subtotal = parseFloat(orderData.subtotal) || 0;
+    const discount = parseFloat(orderData.discount) || 0;
+    const shipping = parseFloat(orderData.shipping) || 0;
+    const tax = parseFloat(orderData.tax) || 0;
+    const total = subtotal - discount + shipping + tax;
+    
+    // Insert order
+    db.getDb().prepare(`
+      INSERT INTO orders (
+        id, order_number, customer_name, customer_phone, customer_email,
+        subtotal, discount, shipping, tax, total, payment_method, payment_status,
+        notes, user_id, status
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      orderId,
+      orderNumber,
+      orderData.customer_name || '',
+      orderData.customer_phone || '',
+      orderData.customer_email || '',
+      subtotal,
+      discount,
+      shipping,
+      tax,
+      total,
+      orderData.payment_method || 'cash',
+      'paid',
+      orderData.notes || '',
+      req.session.userId,
+      'completed'
+    );
+    
+    // Insert order items
+    if (orderData.items && Array.isArray(orderData.items)) {
+      const itemStmt = db.getDb().prepare(`
+        INSERT INTO order_items (
+          id, order_id, product_id, product_name, quantity, price, subtotal
+        ) VALUES (?, ?, ?, ?, ?, ?, ?)
+      `);
+      
+      for (const item of orderData.items) {
+        itemStmt.run(
+          uuidv4(),
+          orderId,
+          item.product_id,
+          item.product_name,
+          item.quantity,
+          item.price,
+          item.quantity * item.price
+        );
+        
+        // Update product stock
+        db.getDb().prepare(`
+          UPDATE products 
+          SET stock_quantity = stock_quantity - ? 
+          WHERE id = ?
+        `).run(item.quantity, item.product_id);
+      }
+    }
+    
+    res.json({ success: true, orderId, orderNumber });
   } catch (error) {
+    console.error('Order creation error:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 });
 
 app.get('/api/orders/:id', requireAuth, async (req, res) => {
   try {
-    const order = await db.getOrderById(req.params.id);
-    res.json({ success: true, order });
+    const order = db.getDb().prepare(`
+      SELECT o.*, u.username as user_name 
+      FROM orders o
+      LEFT JOIN users u ON o.user_id = u.id
+      WHERE o.id = ?
+    `).get(req.params.id);
+    
+    if (order) {
+      const items = db.getDb().prepare(`
+        SELECT * FROM order_items WHERE order_id = ?
+      `).all(req.params.id);
+      order.items = items;
+    }
+    
+    res.json({ success: true, data: order });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
   }
@@ -215,8 +295,13 @@ app.get('/api/orders/:id', requireAuth, async (req, res) => {
 // Expenses
 app.get('/api/expenses', requireAuth, async (req, res) => {
   try {
-    const expenses = await db.getAllExpenses();
-    res.json({ success: true, expenses });
+    const expenses = db.getDb().prepare(`
+      SELECT e.*, u.username as paid_by_name
+      FROM expenses e
+      LEFT JOIN users u ON e.paid_by = u.id
+      ORDER BY e.expense_date DESC
+    `).all();
+    res.json({ success: true, data: expenses });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
   }
@@ -224,12 +309,24 @@ app.get('/api/expenses', requireAuth, async (req, res) => {
 
 app.post('/api/expenses', requireAuth, async (req, res) => {
   try {
-    const expenseData = {
-      ...req.body,
-      userId: req.session.userId
-    };
-    const result = await db.createExpense(expenseData);
-    res.json(result);
+    const { v4: uuidv4 } = require('uuid');
+    const expenseData = req.body;
+    const id = uuidv4();
+    
+    db.getDb().prepare(`
+      INSERT INTO expenses (id, title, category, amount, expense_date, paid_by, notes)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      id,
+      expenseData.title,
+      expenseData.category || 'General',
+      expenseData.amount,
+      expenseData.expense_date || new Date().toISOString().split('T')[0],
+      req.session.userId,
+      expenseData.notes || ''
+    );
+    
+    res.json({ success: true, id });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
   }
@@ -239,8 +336,56 @@ app.post('/api/expenses', requireAuth, async (req, res) => {
 app.post('/api/reports/generate', requireAuth, async (req, res) => {
   try {
     const { startDate, endDate } = req.body;
-    const report = await db.generateReport(startDate, endDate);
-    res.json({ success: true, report });
+    
+    // Sales report
+    const orders = db.getDb().prepare(`
+      SELECT * FROM orders 
+      WHERE date(created_at) BETWEEN ? AND ?
+    `).all(startDate, endDate);
+    
+    const totalRevenue = orders.reduce((sum, o) => sum + o.total, 0);
+    const totalOrders = orders.length;
+    const avgOrderValue = totalOrders > 0 ? totalRevenue / totalOrders : 0;
+    
+    // Top products
+    const topProducts = db.getDb().prepare(`
+      SELECT 
+        oi.product_name,
+        p.sku,
+        SUM(oi.quantity) as total_sold,
+        SUM(oi.subtotal) as total_revenue
+      FROM order_items oi
+      JOIN orders o ON oi.order_id = o.id
+      LEFT JOIN products p ON oi.product_id = p.id
+      WHERE date(o.created_at) BETWEEN ? AND ?
+      GROUP BY oi.product_id, oi.product_name, p.sku
+      ORDER BY total_sold DESC
+      LIMIT 10
+    `).all(startDate, endDate);
+    
+    // Expenses in period
+    const expenses = db.getDb().prepare(`
+      SELECT SUM(amount) as total 
+      FROM expenses 
+      WHERE date(expense_date) BETWEEN ? AND ?
+    `).get(startDate, endDate);
+    
+    const totalExpenses = expenses?.total || 0;
+    const grossProfit = totalRevenue - totalExpenses;
+    
+    res.json({
+      success: true,
+      report: {
+        totalRevenue,
+        totalOrders,
+        avgOrderValue,
+        totalExpenses,
+        grossProfit,
+        topProducts,
+        startDate,
+        endDate
+      }
+    });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
   }
@@ -249,8 +394,12 @@ app.post('/api/reports/generate', requireAuth, async (req, res) => {
 // Settings
 app.get('/api/settings', requireAuth, async (req, res) => {
   try {
-    const settings = await db.getSettings();
-    res.json({ success: true, settings });
+    const settings = db.getDb().prepare('SELECT * FROM settings').all();
+    const settingsObj = {};
+    settings.forEach(s => {
+      settingsObj[s.key] = s.value;
+    });
+    res.json({ success: true, settings: settingsObj });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
   }
@@ -258,8 +407,16 @@ app.get('/api/settings', requireAuth, async (req, res) => {
 
 app.post('/api/settings', requireAuth, async (req, res) => {
   try {
-    const result = await db.updateSettings(req.body);
-    res.json(result);
+    const settingsData = req.body;
+    const stmt = db.getDb().prepare(`
+      INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)
+    `);
+    
+    for (const [key, value] of Object.entries(settingsData)) {
+      stmt.run(key, value);
+    }
+    
+    res.json({ success: true });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
   }
@@ -271,8 +428,12 @@ app.get('/api/users', requireAuth, async (req, res) => {
     if (req.session.role !== 'admin') {
       return res.status(403).json({ success: false, error: 'Admin access required' });
     }
-    const users = await db.getAllUsers();
-    res.json({ success: true, users });
+    const users = db.getDb().prepare(`
+      SELECT id, username, display_name, role, is_active, created_at 
+      FROM users 
+      ORDER BY created_at DESC
+    `).all();
+    res.json({ success: true, data: users });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
   }
@@ -283,8 +444,25 @@ app.post('/api/users', requireAuth, async (req, res) => {
     if (req.session.role !== 'admin') {
       return res.status(403).json({ success: false, error: 'Admin access required' });
     }
-    const result = await db.createUser(req.body);
-    res.json(result);
+    
+    const { v4: uuidv4 } = require('uuid');
+    const bcrypt = require('bcrypt');
+    const userData = req.body;
+    const id = uuidv4();
+    const passwordHash = await bcrypt.hash(userData.password, 10);
+    
+    db.getDb().prepare(`
+      INSERT INTO users (id, username, password_hash, display_name, role, is_active)
+      VALUES (?, ?, ?, ?, ?, 1)
+    `).run(
+      id,
+      userData.username,
+      passwordHash,
+      userData.display_name || userData.username,
+      userData.role || 'staff'
+    );
+    
+    res.json({ success: true, id });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
   }
@@ -293,11 +471,18 @@ app.post('/api/users', requireAuth, async (req, res) => {
 app.put('/api/users/:id/password', requireAuth, async (req, res) => {
   try {
     // Users can change their own password, admins can change anyone's
-    if (req.session.userId !== parseInt(req.params.id) && req.session.role !== 'admin') {
+    if (req.session.userId !== req.params.id && req.session.role !== 'admin') {
       return res.status(403).json({ success: false, error: 'Not authorized' });
     }
-    const result = await db.changePassword(req.params.id, req.body.newPassword);
-    res.json(result);
+    
+    const bcrypt = require('bcrypt');
+    const passwordHash = await bcrypt.hash(req.body.newPassword, 10);
+    
+    db.getDb().prepare(`
+      UPDATE users SET password_hash = ? WHERE id = ?
+    `).run(passwordHash, req.params.id);
+    
+    res.json({ success: true });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
   }

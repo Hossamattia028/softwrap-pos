@@ -216,20 +216,104 @@ class PosDatabase {
     const productExists = this.db.prepare('SELECT id FROM products LIMIT 1').get();
     if (!productExists) {
       const sampleProducts = [
-        { sku: 'PROD001', name: 'Laptop Dell XPS 13', price: 4500, cost_price: 3500, stock: 10, category: 'Electronics' },
-        { sku: 'PROD002', name: 'Wireless Mouse', price: 120, cost_price: 80, stock: 50, category: 'Electronics' },
-        { sku: 'PROD003', name: 'USB-C Cable', price: 45, cost_price: 25, stock: 100, category: 'Accessories' },
-        { sku: 'PROD004', name: 'Notebook A4', price: 15, cost_price: 8, stock: 200, category: 'Stationery' },
-        { sku: 'PROD005', name: 'Pen Set', price: 25, cost_price: 12, stock: 150, category: 'Stationery' }
+        { sku: 'PROD001', name: 'Laptop Dell XPS 13', price: 4500, cost_price: 3500, stock: 10, category: 'Electronics', description: 'High-performance laptop with 13" display' },
+        { sku: 'PROD002', name: 'Wireless Mouse Logitech', price: 120, cost_price: 80, stock: 50, category: 'Electronics', description: 'Ergonomic wireless mouse' },
+        { sku: 'PROD003', name: 'USB-C Cable 2m', price: 45, cost_price: 25, stock: 100, category: 'Accessories', description: 'Fast charging USB-C cable' },
+        { sku: 'PROD004', name: 'Notebook A4 80 Sheets', price: 15, cost_price: 8, stock: 200, category: 'Stationery', description: 'Quality notebook for notes' },
+        { sku: 'PROD005', name: 'Pen Set (5 pcs)', price: 25, cost_price: 12, stock: 150, category: 'Stationery', description: 'Blue ink pen set' },
+        { sku: 'PROD006', name: 'Keyboard Mechanical RGB', price: 350, cost_price: 250, stock: 25, category: 'Electronics', description: 'Gaming mechanical keyboard' },
+        { sku: 'PROD007', name: 'Webcam HD 1080p', price: 280, cost_price: 200, stock: 30, category: 'Electronics', description: 'Full HD webcam' },
+        { sku: 'PROD008', name: 'USB Flash Drive 32GB', price: 60, cost_price: 40, stock: 80, category: 'Accessories', description: 'Fast USB 3.0 drive' },
+        { sku: 'PROD009', name: 'Phone Case iPhone', price: 85, cost_price: 50, stock: 60, category: 'Accessories', description: 'Protective phone case' },
+        { sku: 'PROD010', name: 'Headphones Wireless', price: 220, cost_price: 150, stock: 40, category: 'Electronics', description: 'Bluetooth headphones' }
       ];
 
       const insertProduct = this.db.prepare(`
-        INSERT INTO products (id, sku, name, price, cost_price, stock_quantity, category, tax_rate)
-        VALUES (?, ?, ?, ?, ?, ?, ?, 15)
+        INSERT INTO products (id, sku, name, description, price, cost_price, stock_quantity, category, tax_rate, unit)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, 15, 'pcs')
       `);
 
       sampleProducts.forEach(p => {
-        insertProduct.run(uuidv4(), p.sku, p.name, p.price, p.cost_price, p.stock, p.category);
+        insertProduct.run(uuidv4(), p.sku, p.name, p.description, p.price, p.cost_price, p.stock, p.category);
+      });
+    }
+
+    // Sample staff user
+    const staffExists = this.db.prepare('SELECT id FROM users WHERE username = ?').get('staff');
+    if (!staffExists) {
+      const passwordHash = bcrypt.hashSync('staff123', 10);
+      this.db.prepare(`
+        INSERT INTO users (id, username, password_hash, role, display_name)
+        VALUES (?, ?, ?, ?, ?)
+      `).run(uuidv4(), 'staff', passwordHash, 'staff', 'Staff Member');
+    }
+
+    // Sample orders
+    const orderExists = this.db.prepare('SELECT id FROM orders LIMIT 1').get();
+    const adminUser = this.db.prepare('SELECT id FROM users WHERE username = ?').get('admin');
+    if (!orderExists && adminUser) {
+      const products = this.db.prepare('SELECT id, name, price FROM products LIMIT 5').all();
+      if (products.length > 0) {
+        // Create 3 sample orders
+        for (let i = 1; i <= 3; i++) {
+          const orderId = uuidv4();
+          const orderNumber = `ORD-${Date.now()}-${i}`;
+          const subtotal = products[0].price * 2;
+          const tax = subtotal * 0.15;
+          const total = subtotal + tax;
+
+          this.db.prepare(`
+            INSERT INTO orders (
+              id, order_number, customer_name, subtotal, tax, total, 
+              payment_method, payment_status, status, user_id
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          `).run(
+            orderId,
+            orderNumber,
+            `Customer ${i}`,
+            subtotal,
+            tax,
+            total,
+            'cash',
+            'paid',
+            'completed',
+            adminUser.id
+          );
+
+          // Add order items
+          this.db.prepare(`
+            INSERT INTO order_items (id, order_id, product_id, product_name, quantity, price, subtotal)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+          `).run(
+            uuidv4(),
+            orderId,
+            products[0].id,
+            products[0].name,
+            2,
+            products[0].price,
+            products[0].price * 2
+          );
+        }
+      }
+    }
+
+    // Sample expenses
+    const expenseExists = this.db.prepare('SELECT id FROM expenses LIMIT 1').get();
+    if (!expenseExists && adminUser) {
+      const sampleExpenses = [
+        { title: 'Office Rent', amount: 2000, category: 'Rent' },
+        { title: 'Electricity Bill', amount: 350, category: 'Utilities' },
+        { title: 'Internet Service', amount: 250, category: 'Utilities' },
+        { title: 'Office Supplies', amount: 180, category: 'Supplies' }
+      ];
+
+      const insertExpense = this.db.prepare(`
+        INSERT INTO expenses (id, title, category, amount, expense_date, paid_by)
+        VALUES (?, ?, ?, ?, date('now'), ?)
+      `);
+
+      sampleExpenses.forEach(e => {
+        insertExpense.run(uuidv4(), e.title, e.category, e.amount, adminUser.id);
       });
     }
   }
