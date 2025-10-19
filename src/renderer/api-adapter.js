@@ -11,6 +11,7 @@ const API = {
       headers: {
         'Content-Type': 'application/json',
       },
+      credentials: 'include', // Important: Send cookies with requests
     };
 
     if (data && method !== 'GET') {
