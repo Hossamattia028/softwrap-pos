@@ -60,6 +60,20 @@ class PosDatabase {
     } catch (error) {
       console.error('Orders migration error:', error);
     }
+
+    // Check and fix expenses table columns
+    try {
+      const expensesInfo = this.db.prepare("PRAGMA table_info(expenses)").all();
+      const hasExpenseDate = expensesInfo.some(col => col.name === 'expense_date');
+      
+      if (!hasExpenseDate) {
+        console.log('Adding expense_date column to expenses table...');
+        this.db.exec('ALTER TABLE expenses ADD COLUMN expense_date TEXT DEFAULT CURRENT_DATE');
+      }
+      console.log('Expenses table migration completed');
+    } catch (error) {
+      console.error('Expenses migration error:', error);
+    }
   }
 
   createTables() {
@@ -143,11 +157,11 @@ class PosDatabase {
         title TEXT NOT NULL,
         amount REAL NOT NULL,
         category TEXT,
+        expense_date TEXT DEFAULT CURRENT_DATE,
         notes TEXT,
-        created_at TEXT DEFAULT CURRENT_TIMESTAMP,
         paid_by TEXT,
-        user_id TEXT,
-        FOREIGN KEY (user_id) REFERENCES users(id)
+        created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (paid_by) REFERENCES users(id)
       )
     `);
 
