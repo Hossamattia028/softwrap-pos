@@ -1364,7 +1364,7 @@ const state = {
   
   // Utilities
   function formatCurrency(amount) {
-    const symbol = state.settings.currency_symbol || 'EGP';
+    const symbol = (state.settings && state.settings.currency_symbol) || 'EGP';
     return `${amount.toFixed(2)} ${symbol}`;
   }
   
