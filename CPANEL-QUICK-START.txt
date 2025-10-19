@@ -1,0 +1,145 @@
+╔═══════════════════════════════════════════════════════════════════╗
+║                                                                   ║
+║         📦 CPANEL DEPLOYMENT - QUICK START GUIDE                 ║
+║                                                                   ║
+╚═══════════════════════════════════════════════════════════════════╝
+
+🎯 GOAL: Deploy Softwrap POS to your cPanel hosting
+
+═══════════════════════════════════════════════════════════════════
+⚡ QUICK STEPS (20 Minutes)
+═══════════════════════════════════════════════════════════════════
+
+STEP 1: Create Deployment Package (On Your Computer)
+─────────────────────────────────────────────────────────────────
+
+  $ ./create-cpanel-package.sh
+
+  ✅ This creates: softwrap-pos-cpanel-YYYYMMDD-HHMMSS.zip
+
+STEP 2: Upload to cPanel
+─────────────────────────────────────────────────────────────────
+
+  1. Login to cPanel
+  2. Open "File Manager"
+  3. Go to "public_html"
+  4. Create folder: "softwrap-pos"
+  5. Enter the folder
+  6. Click "Upload"
+  7. Select your ZIP file
+  8. After upload, click "Extract"
+  9. Delete the ZIP file
+
+STEP 3: Setup Node.js Application
+─────────────────────────────────────────────────────────────────
+
+  1. In cPanel, find "Setup Node.js App"
+  2. Click "Create Application"
+  3. Fill in:
+     • Node.js version: 18.x (or latest)
+     • Application mode: Production
+     • Application root: softwrap-pos
+     • Application URL: your domain
+     • Startup file: src/web-server/server.js
+     • Port: 3000
+
+  4. Click "Create"
+
+STEP 4: Install Dependencies
+─────────────────────────────────────────────────────────────────
+
+  1. In cPanel, open "Terminal"
+  2. Copy the "Enter to virtual environment" command
+     (shown in Node.js App interface)
+  3. Paste in terminal and run
+  4. Run:
+     npm install --production
+     npm rebuild bcrypt better-sqlite3
+
+STEP 5: Set Environment Variables
+─────────────────────────────────────────────────────────────────
+
+  In Node.js App interface, add:
+
+  PORT = 3000
+  NODE_ENV = production
+  SESSION_SECRET = your-random-secret-change-this
+
+STEP 6: Start Application
+─────────────────────────────────────────────────────────────────
+
+  1. Click "Start App"
+  2. Wait for green status
+  3. Done! ✅
+
+═══════════════════════════════════════════════════════════════════
+🌐 ACCESS YOUR APPLICATION
+═══════════════════════════════════════════════════════════════════
+
+Visit: https://yourdomain.com/softwrap-pos
+
+Or setup subdomain: https://pos.yourdomain.com
+
+Login:
+  Username: admin
+  Password: admin123
+
+⚠️  IMPORTANT: Change password after first login!
+
+═══════════════════════════════════════════════════════════════════
+📋 REQUIREMENTS
+═══════════════════════════════════════════════════════════════════
+
+Your cPanel hosting MUST have:
+  ✅ Node.js support (v14+)
+  ✅ 500MB+ free space
+  ✅ Domain or subdomain
+  ✅ SSH access (optional but helpful)
+
+═══════════════════════════════════════════════════════════════════
+🔧 TROUBLESHOOTING
+═══════════════════════════════════════════════════════════════════
+
+App won't start?
+  → Check logs in Node.js App interface
+  → Verify Node.js version is 14+
+  → Make sure port 3000 is available
+
+Can't access the URL?
+  → Check .htaccess file is uploaded
+  → Verify Node.js app is running (green)
+  → Check domain points to correct folder
+
+Database errors?
+  → Run: npm rebuild bcrypt better-sqlite3
+
+Module not found?
+  → Run: npm install --production
+
+═══════════════════════════════════════════════════════════════════
+📚 FULL DOCUMENTATION
+═══════════════════════════════════════════════════════════════════
+
+Read: CPANEL-DEPLOYMENT-GUIDE.md
+
+For detailed steps, troubleshooting, and advanced configuration.
+
+═══════════════════════════════════════════════════════════════════
+✅ SUCCESS CHECKLIST
+═══════════════════════════════════════════════════════════════════
+
+After deployment:
+  □ Application is running (green status)
+  □ Can access via browser
+  □ Can login with admin/admin123
+  □ Changed admin password
+  □ SSL/HTTPS is enabled
+  □ Tested adding products
+  □ Tested creating sales
+
+═══════════════════════════════════════════════════════════════════
+
+🎉 Your POS system is now live on cPanel!
+
+═══════════════════════════════════════════════════════════════════
+

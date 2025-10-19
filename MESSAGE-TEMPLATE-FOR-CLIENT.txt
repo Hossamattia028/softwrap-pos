@@ -1,0 +1,93 @@
+═══════════════════════════════════════════════════════════════════
+  📱 MESSAGE TEMPLATE - COPY AND SEND TO CLIENT
+═══════════════════════════════════════════════════════════════════
+
+When a client asks to test your app, send them this message:
+
+───────────────────────────────────────────────────────────────────
+
+Hi [Client Name]!
+
+Thanks for your interest in trying the Softwrap POS system!
+
+🔗 Try it now (no download needed):
+[PASTE YOUR NGROK URL HERE]
+
+Example: https://abc123.ngrok.io
+
+📱 Access Information:
+• Works on any device (desktop, laptop, tablet, phone)
+• No installation required
+• Just open the link in your browser
+
+🔐 Login Credentials:
+Username: admin
+Password: admin123
+
+✨ You Can Test:
+✅ Add and manage products
+✅ Process sales transactions
+✅ View order history
+✅ Track expenses
+✅ Generate reports
+✅ Manage users and settings
+✅ Backup and restore data
+
+⏰ Demo Access:
+This demo link is active for the next 2 hours while you test.
+If you need more time, just let me know and I'll extend it!
+
+📞 Support:
+If you have any questions while testing, feel free to:
+• Call me: [Your Phone]
+• Message me: [Your Email/WhatsApp]
+
+Looking forward to your feedback!
+
+Best regards,
+[Your Name]
+
+───────────────────────────────────────────────────────────────────
+
+📋 ALTERNATIVE: If client prefers desktop version
+
+───────────────────────────────────────────────────────────────────
+
+Hi [Client Name]!
+
+I've prepared a Windows desktop version of Softwrap POS for you to test.
+
+📦 Download Link:
+[Your Google Drive/Dropbox/WeTransfer link]
+
+📥 Installation:
+1. Download and extract the ZIP file
+2. Double-click "Softwrap POS.exe"
+3. If Windows shows a security warning:
+   - Click "More info"
+   - Click "Run anyway"
+
+🔐 Login:
+Username: admin
+Password: admin123
+
+✨ Features to Test:
+✅ Full offline capability
+✅ Thermal printer support
+✅ Product management
+✅ Sales processing
+✅ Inventory tracking
+✅ Reports and analytics
+
+💾 Your Data:
+All data is saved locally on your computer
+Automatic backups every hour
+
+📞 Need Help?
+Call/message me anytime: [Your Contact]
+
+Best regards,
+[Your Name]
+
+═══════════════════════════════════════════════════════════════════
+

@@ -1,0 +1,42 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+linux-unpacked/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Logs
+*.log
+npm-debug.log*
+
+# Database files (don't commit test data)
+*.db
+*.db-shm
+*.db-wal
+
+# Environment files
+.env
+.env.local
+
+# Temporary files
+*.tmp
+.cache/
+
+# Package files (created by script)
+Softwrap-POS-For-Client/
+*.zip
+softwrap-pos-cpanel-*.zip
+
+# Runtime files
+*.pid

@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Softwrap POS</title>
+  <link rel="stylesheet" href="styles.css">
+  <script src="translations.js"></script>
+  <script src="i18n-helper.js"></script>
+  <script src="api-adapter.js"></script>
+</head>
+<body>
+  <div id="app">
+    <!-- Login Screen -->
+    <div id="login-screen" class="screen active">
+      <div class="login-container">
+        <div class="login-box">
+          <h1 id="login-title">🛒 Softwrap POS</h1>
+          <h2 id="login-subtitle">Offline Desktop</h2>
+          <form id="login-form">
+            <div class="form-group">
+              <label id="label-username">Username</label>
+              <input type="text" id="username" required autocomplete="username">
+            </div>
+            <div class="form-group">
+              <label id="label-password">Password</label>
+              <input type="password" id="password" required autocomplete="current-password">
+            </div>
+            <button type="submit" class="btn btn-primary btn-block" id="login-btn">Login</button>
+            <div id="login-error" class="error-message"></div>
+          </form>
+          <div class="login-footer">
+            <small>Default: admin / admin123</small>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Main App -->
+    <div id="main-screen" class="screen">
+      <!-- Sidebar -->
+      <div class="sidebar">
+      <div class="sidebar-header">
+        <h2>Softwrap POS</h2>
+        <div id="user-info" class="user-info"></div>
+        <div class="language-switcher">
+          <select id="language-select" class="lang-select">
+            <option value="en">English</option>
+            <option value="ar">العربية</option>
+          </select>
+        </div>
+      </div>
+        <nav class="sidebar-nav">
+          <a href="#" data-screen="pos" class="nav-item active">
+            <span class="icon">💰</span> POS / Checkout
+          </a>
+          <a href="#" data-screen="products" class="nav-item">
+            <span class="icon">📦</span> Products
+          </a>
+          <a href="#" data-screen="orders" class="nav-item">
+            <span class="icon">📋</span> Orders
+          </a>
+          <a href="#" data-screen="expenses" class="nav-item">
+            <span class="icon">💸</span> Expenses
+          </a>
+          <a href="#" data-screen="reports" class="nav-item">
+            <span class="icon">📊</span> Reports
+          </a>
+          <a href="#" data-screen="backup" class="nav-item">
+            <span class="icon">💾</span> Backup & Restore
+          </a>
+          <a href="#" data-screen="settings" class="nav-item">
+            <span class="icon">⚙️</span> Settings
+          </a>
+          <a href="#" data-screen="users" class="nav-item">
+            <span class="icon">👥</span> Users
+          </a>
+        </nav>
+        <div class="sidebar-footer">
+          <button id="logout-btn" class="btn btn-secondary btn-sm">Logout</button>
+        </div>
+      </div>
+
+      <!-- Main Content -->
+      <div class="main-content">
+        <!-- POS Screen -->
+        <div id="pos-content" class="content-panel active">
+          <div class="pos-layout">
+            <div class="pos-left">
+          <div class="search-bar">
+            <input type="text" id="product-search" class="search-input">
+          </div>
+              <div id="product-results" class="product-grid"></div>
+            </div>
+            <div class="pos-right">
+              <div class="cart-header">
+                <h3>Current Order</h3>
+                <button id="clear-cart" class="btn btn-sm">Clear</button>
+              </div>
+              <div id="cart-items" class="cart-items"></div>
+              <div class="cart-summary">
+                <div class="summary-row">
+                  <span id="label-subtotal">Subtotal:</span>
+                  <span id="cart-subtotal">0.00</span>
+                </div>
+                <div class="summary-row">
+                  <label id="label-discount">Discount:</label>
+                  <input type="number" id="cart-discount" value="0" min="0" step="0.01">
+                </div>
+                <div class="summary-row">
+                  <label id="label-shipping">Shipping:</label>
+                  <input type="number" id="cart-shipping" value="0" min="0" step="0.01">
+                </div>
+                <div class="summary-row">
+                  <span id="label-tax">Tax:</span>
+                  <span id="cart-tax">0.00</span>
+                </div>
+                <div class="summary-row total">
+                  <span id="label-total">Total:</span>
+                  <span id="cart-total">0.00</span>
+                </div>
+              </div>
+              <div class="payment-section">
+                <div class="form-group">
+                  <label id="label-payment-method">Payment Method</label>
+                  <select id="payment-method">
+                    <option value="cash">Cash</option>
+                    <option value="card">Card</option>
+                    <option value="wallet">Wallet</option>
+                    <option value="credit">Credit</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label id="label-customer-name">Customer Name (Optional)</label>
+                  <input type="text" id="customer-name">
+                </div>
+                <button id="complete-sale" class="btn btn-success btn-lg btn-block">Complete Sale</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Products Screen -->
+        <div id="products-content" class="content-panel">
+          <div class="panel-header">
+            <h2>Products Management</h2>
+            <button id="add-product-btn" class="btn btn-primary">+ Add Product</button>
+          </div>
+          <div class="table-container">
+            <table id="products-table" class="data-table">
+              <thead>
+                <tr>
+                  <th>SKU</th>
+                  <th>Name</th>
+                  <th>Category</th>
+                  <th>Price</th>
+                  <th>Stock</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Orders Screen -->
+        <div id="orders-content" class="content-panel">
+          <div class="panel-header">
+            <h2>Orders History</h2>
+          </div>
+          <div class="table-container">
+            <table id="orders-table" class="data-table">
+              <thead>
+                <tr>
+                  <th>Order #</th>
+                  <th>Date</th>
+                  <th>Customer</th>
+                  <th>Items</th>
+                  <th>Total</th>
+                  <th>Status</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Expenses Screen -->
+        <div id="expenses-content" class="content-panel">
+          <div class="panel-header">
+            <h2>Expenses Management</h2>
+            <button id="add-expense-btn" class="btn btn-primary">+ Add Expense</button>
+          </div>
+          <div class="table-container">
+            <table id="expenses-table" class="data-table">
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Title</th>
+                  <th>Category</th>
+                  <th>Amount</th>
+                  <th>Paid By</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Reports Screen -->
+        <div id="reports-content" class="content-panel">
+          <div class="panel-header">
+            <h2>Reports & Analytics</h2>
+          </div>
+          <div class="reports-filters">
+            <div class="form-group">
+              <label>Start Date</label>
+              <input type="date" id="report-start-date">
+            </div>
+            <div class="form-group">
+              <label>End Date</label>
+              <input type="date" id="report-end-date">
+            </div>
+            <button id="generate-report" class="btn btn-primary">Generate Report</button>
+          </div>
+          <div id="reports-results" class="reports-results">
+            <div class="stats-grid">
+              <div class="stat-card">
+                <h3>Total Revenue</h3>
+                <div class="stat-value" id="stat-revenue">0.00</div>
+              </div>
+              <div class="stat-card">
+                <h3>Total Orders</h3>
+                <div class="stat-value" id="stat-orders">0</div>
+              </div>
+              <div class="stat-card">
+                <h3>Gross Profit</h3>
+                <div class="stat-value" id="stat-profit">0.00</div>
+              </div>
+              <div class="stat-card">
+                <h3>Avg Order Value</h3>
+                <div class="stat-value" id="stat-avg">0.00</div>
+              </div>
+            </div>
+            <div class="top-products">
+              <h3>Top Selling Products</h3>
+              <table id="top-products-table" class="data-table">
+                <thead>
+                  <tr>
+                    <th>Product</th>
+                    <th>SKU</th>
+                    <th>Sold</th>
+                    <th>Revenue</th>
+                  </tr>
+                </thead>
+                <tbody></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- Backup Screen -->
+        <div id="backup-content" class="content-panel">
+          <div class="panel-header">
+            <h2>Backup & Restore</h2>
+          </div>
+          <div class="backup-actions">
+            <button id="create-backup-btn" class="btn btn-primary">Create Backup Now</button>
+            <button id="import-backup-btn" class="btn btn-secondary">Import Backup</button>
+          </div>
+          <div class="backup-list">
+            <h3>Available Backups</h3>
+            <table id="backups-table" class="data-table">
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>Date</th>
+                  <th>Type</th>
+                  <th>Size</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Settings Screen -->
+        <div id="settings-content" class="content-panel">
+          <div class="panel-header">
+            <h2>Settings</h2>
+          </div>
+          <form id="settings-form" class="settings-form">
+            <div class="settings-section">
+              <h3>Store Information</h3>
+              <div class="form-group">
+                <label>Store Name</label>
+                <input type="text" name="store_name">
+              </div>
+              <div class="form-group">
+                <label>Phone</label>
+                <input type="text" name="store_phone">
+              </div>
+              <div class="form-group">
+                <label>Email</label>
+                <input type="email" name="store_email">
+              </div>
+              <div class="form-group">
+                <label>Address</label>
+                <textarea name="store_address" rows="3"></textarea>
+              </div>
+              <div class="form-group">
+                <label>Tax Number</label>
+                <input type="text" name="tax_number">
+              </div>
+            </div>
+            <div class="settings-section">
+              <h3>Defaults</h3>
+              <div class="form-group">
+                <label>Default Tax Rate (%)</label>
+                <input type="number" name="default_tax_rate" min="0" max="100" step="0.01">
+              </div>
+              <div class="form-group">
+                <label>Currency Symbol</label>
+                <input type="text" name="currency_symbol">
+              </div>
+              <div class="form-group">
+                <label>Low Stock Threshold</label>
+                <input type="number" name="low_stock_threshold" min="0">
+              </div>
+              <div class="form-group">
+                <label>Auto Backup Interval (minutes)</label>
+                <input type="number" name="backup_interval" min="1">
+              </div>
+            </div>
+            <div class="settings-section">
+              <h3>Receipt</h3>
+              <div class="form-group">
+                <label>Receipt Header</label>
+                <input type="text" name="receipt_header">
+              </div>
+              <div class="form-group">
+                <label>Receipt Footer</label>
+                <input type="text" name="receipt_footer">
+              </div>
+            </div>
+            <button type="submit" class="btn btn-primary">Save Settings</button>
+          </form>
+        </div>
+
+        <!-- Users Screen -->
+        <div id="users-content" class="content-panel">
+          <div class="panel-header">
+            <h2>Users Management</h2>
+            <button id="add-user-btn" class="btn btn-primary">+ Add User</button>
+          </div>
+          <div class="table-container">
+            <table id="users-table" class="data-table">
+              <thead>
+                <tr>
+                  <th>Username</th>
+                  <th>Display Name</th>
+                  <th>Role</th>
+                  <th>Status</th>
+                  <th>Created</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modals -->
+  <div id="modal-overlay" class="modal-overlay">
+    <div id="modal-content" class="modal-content"></div>
+  </div>
+
+  <script src="app.js"></script>
+  <script>
+    // Initialize language on page load
+    document.addEventListener('DOMContentLoaded', () => {
+      const savedLang = window.translator.getCurrentLanguage();
+      document.getElementById('language-select').value = savedLang;
+    });
+  </script>
+</body>
+</html>
+
