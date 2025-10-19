@@ -737,13 +737,20 @@ const state = {
   async function loadSettings() {
     const result = await window.API.getSettings();
     if (result.success) {
-      state.settings = result.data;
+      state.settings = result.settings || result.data || {};
       populateSettingsForm();
+    } else {
+      state.settings = {};
     }
   }
   
   function populateSettingsForm() {
     const form = document.getElementById('settings-form');
+    if (!state.settings || typeof state.settings !== 'object') {
+      state.settings = {};
+      return;
+    }
+    
     Object.entries(state.settings).forEach(([key, value]) => {
       const input = form.querySelector(`[name="${key}"]`);
       if (input) {
