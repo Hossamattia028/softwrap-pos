@@ -4,6 +4,7 @@ const state = {
     cart: [],
     products: [],
     orders: [],
+    users: [],
     settings: {},
     discount: 0,
     shipping: 0
@@ -706,30 +707,27 @@ const state = {
       return;
     }
   
-    const [salesResult, profitResult] = await Promise.all([
-      window.API.getSalesReport({ startDate, endDate }),
-      window.API.getProfitReport({ startDate, endDate })
-    ]);
+    const result = await window.API.generateReport(startDate, endDate);
   
-    if (salesResult.success) {
-      const stats = salesResult.data.stats;
-      document.getElementById('stat-revenue').textContent = formatCurrency(stats.total_revenue || 0);
-      document.getElementById('stat-orders').textContent = stats.total_orders || 0;
-      document.getElementById('stat-avg').textContent = formatCurrency(stats.average_order_value || 0);
+    if (result.success) {
+      const report = result.report || {};
+      document.getElementById('stat-revenue').textContent = formatCurrency(report.totalRevenue || 0);
+      document.getElementById('stat-orders').textContent = report.totalOrders || 0;
+      document.getElementById('stat-avg').textContent = formatCurrency(report.avgOrderValue || 0);
+      document.getElementById('stat-profit').textContent = formatCurrency(report.grossProfit || 0);
   
       const topProductsTbody = document.querySelector('#top-products-table tbody');
-      topProductsTbody.innerHTML = salesResult.data.topProducts.map(p => `
+      const topProducts = report.topProducts || [];
+      topProductsTbody.innerHTML = topProducts.map(p => `
         <tr>
-          <td>${p.product_name}</td>
-          <td>${p.product_sku}</td>
-          <td>${p.total_sold}</td>
-          <td>${formatCurrency(p.revenue)}</td>
+          <td>${p.product_name || '-'}</td>
+          <td>${p.sku || '-'}</td>
+          <td>${p.total_sold || 0}</td>
+          <td>${formatCurrency(p.total_revenue || 0)}</td>
         </tr>
       `).join('');
-    }
-  
-    if (profitResult.success) {
-      document.getElementById('stat-profit').textContent = formatCurrency(profitResult.data.profit);
+    } else {
+      alert('Error generating report: ' + (result.error || result.message || 'Unknown error'));
     }
   }
   
@@ -843,19 +841,27 @@ const state = {
   async function loadUsers() {
     const result = await window.API.getUsers();
     if (result.success) {
-      renderUsersTable(result.data);
+      state.users = result.data || [];
+      renderUsersTable(state.users);
     }
   }
   
   function renderUsersTable(users) {
     const tbody = document.querySelector('#users-table tbody');
+    if (!tbody) return;
+    
     const t = (key) => window.translator ? window.translator.t(key) : key;
+    
+    if (!users || users.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">No users found</td></tr>';
+      return;
+    }
     
     tbody.innerHTML = users.map(user => `
       <tr>
         <td>${user.username}</td>
-        <td>${user.display_name}</td>
-        <td><span class="badge badge-success">${t(user.role)}</span></td>
+        <td>${user.display_name || user.username}</td>
+        <td><span class="badge badge-success">${t(user.role || 'staff')}</span></td>
         <td><span class="badge ${user.is_active ? 'badge-success' : 'badge-danger'}">${user.is_active ? t('active') : t('inactive')}</span></td>
         <td>${formatDate(user.created_at)}</td>
       </tr>
