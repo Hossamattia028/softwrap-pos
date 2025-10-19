@@ -17,10 +17,10 @@ class PosDatabase {
   }
 
   migrateDatabase() {
-    // Check if image_path column exists, if not add it
+    // Check if image_path column exists in products, if not add it
     try {
-      const tableInfo = this.db.prepare("PRAGMA table_info(products)").all();
-      const hasImagePath = tableInfo.some(col => col.name === 'image_path');
+      const productsInfo = this.db.prepare("PRAGMA table_info(products)").all();
+      const hasImagePath = productsInfo.some(col => col.name === 'image_path');
       
       if (!hasImagePath) {
         console.log('Adding image_path column to products table...');
@@ -28,7 +28,37 @@ class PosDatabase {
         console.log('Migration completed successfully');
       }
     } catch (error) {
-      console.error('Migration error:', error);
+      console.error('Products migration error:', error);
+    }
+
+    // Check and fix orders table columns
+    try {
+      const ordersInfo = this.db.prepare("PRAGMA table_info(orders)").all();
+      const hasTax = ordersInfo.some(col => col.name === 'tax');
+      const hasDiscount = ordersInfo.some(col => col.name === 'discount');
+      const hasShipping = ordersInfo.some(col => col.name === 'shipping');
+      const hasPaymentMethod = ordersInfo.some(col => col.name === 'payment_method');
+      
+      if (!hasTax) {
+        console.log('Adding tax column to orders table...');
+        this.db.exec('ALTER TABLE orders ADD COLUMN tax REAL DEFAULT 0');
+      }
+      if (!hasDiscount) {
+        console.log('Adding discount column to orders table...');
+        this.db.exec('ALTER TABLE orders ADD COLUMN discount REAL DEFAULT 0');
+      }
+      if (!hasShipping) {
+        console.log('Adding shipping column to orders table...');
+        this.db.exec('ALTER TABLE orders ADD COLUMN shipping REAL DEFAULT 0');
+      }
+      if (!hasPaymentMethod) {
+        console.log('Adding payment_method column to orders table...');
+        this.db.exec('ALTER TABLE orders ADD COLUMN payment_method TEXT DEFAULT "cash"');
+        this.db.exec('ALTER TABLE orders ADD COLUMN payment_status TEXT DEFAULT "paid"');
+      }
+      console.log('Orders table migration completed');
+    } catch (error) {
+      console.error('Orders migration error:', error);
     }
   }
 
@@ -59,16 +89,19 @@ class PosDatabase {
         id TEXT PRIMARY KEY,
         order_number TEXT UNIQUE NOT NULL,
         created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-        status TEXT DEFAULT 'paid',
+        updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+        status TEXT DEFAULT 'completed',
         subtotal REAL NOT NULL,
-        tax_total REAL DEFAULT 0,
-        discount_total REAL DEFAULT 0,
-        shipping_cost REAL DEFAULT 0,
+        discount REAL DEFAULT 0,
+        shipping REAL DEFAULT 0,
+        tax REAL DEFAULT 0,
         total REAL NOT NULL,
         customer_name TEXT,
         customer_phone TEXT,
         customer_email TEXT,
         notes TEXT,
+        payment_method TEXT DEFAULT 'cash',
+        payment_status TEXT DEFAULT 'paid',
         user_id TEXT,
         FOREIGN KEY (user_id) REFERENCES users(id)
       )
@@ -81,12 +114,10 @@ class PosDatabase {
         order_id TEXT NOT NULL,
         product_id TEXT NOT NULL,
         product_name TEXT NOT NULL,
-        product_sku TEXT NOT NULL,
         quantity INTEGER NOT NULL,
-        unit_price REAL NOT NULL,
-        discount REAL DEFAULT 0,
-        tax REAL DEFAULT 0,
-        total REAL NOT NULL,
+        price REAL NOT NULL,
+        subtotal REAL NOT NULL,
+        created_at TEXT DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE,
         FOREIGN KEY (product_id) REFERENCES products(id)
       )
