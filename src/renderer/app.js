@@ -558,23 +558,23 @@ const state = {
               </tr>
             </thead>
             <tbody>
-              ${order.items.map(item => `
+              ${(order.items || []).map(item => `
                 <tr>
                   <td>${item.product_name}</td>
                   <td>${item.quantity}</td>
-                  <td>${formatCurrency(item.unit_price)}</td>
-                  <td>${formatCurrency(item.total)}</td>
+                  <td>${formatCurrency(item.price || 0)}</td>
+                  <td>${formatCurrency(item.subtotal || 0)}</td>
                 </tr>
               `).join('')}
             </tbody>
           </table>
           <hr>
           <div style="text-align: ${window.translator?.getCurrentLanguage() === 'ar' ? 'right' : 'right'};">
-            <p>${t('subtotal')}: ${formatCurrency(order.subtotal)}</p>
-            <p>${t('tax')}: ${formatCurrency(order.tax_total)}</p>
-            <p>${t('discount')}: ${formatCurrency(order.discount_total)}</p>
-            <p>${t('shipping')}: ${formatCurrency(order.shipping_cost)}</p>
-            <p><strong>${t('total')}: ${formatCurrency(order.total)}</strong></p>
+            <p>${t('subtotal')}: ${formatCurrency(order.subtotal || 0)}</p>
+            <p>${t('tax')}: ${formatCurrency(order.tax || 0)}</p>
+            <p>${t('discount')}: ${formatCurrency(order.discount || 0)}</p>
+            <p>${t('shipping')}: ${formatCurrency(order.shipping || 0)}</p>
+            <p><strong>${t('total')}: ${formatCurrency(order.total || 0)}</strong></p>
           </div>
           <hr>
           <div style="display: flex; gap: 0.5rem; margin-top: 1rem;">
@@ -1372,7 +1372,8 @@ const state = {
   // Utilities
   function formatCurrency(amount) {
     const symbol = (state.settings && state.settings.currency_symbol) || 'EGP';
-    return `${amount.toFixed(2)} ${symbol}`;
+    const num = parseFloat(amount) || 0;
+    return `${num.toFixed(2)} ${symbol}`;
   }
   
   function formatDate(dateString) {
