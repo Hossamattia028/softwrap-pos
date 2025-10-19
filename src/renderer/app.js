@@ -350,11 +350,9 @@ const state = {
       state.cart.push({
         product_id: product.id,
         product_name: product.name,
-        product_sku: product.sku,
         quantity: 1,
-        unit_price: product.price,
-        tax_rate: product.tax_rate,
-        discount: 0
+        price: product.price,
+        tax_rate: product.tax_rate || 0
       });
     }
   
@@ -374,7 +372,7 @@ const state = {
       <div class="cart-item">
         <div class="cart-item-info">
           <h5>${item.product_name}</h5>
-          <div class="sku">${item.product_sku} - ${formatCurrency(item.unit_price)}</div>
+          <div class="sku">${formatCurrency(item.price)} x ${item.quantity} = ${formatCurrency(item.price * item.quantity)}</div>
         </div>
         <div class="cart-item-controls">
           <button onclick="updateCartQuantity(${index}, -1)">-</button>
@@ -429,9 +427,9 @@ const state = {
     let taxTotal = 0;
   
     state.cart.forEach(item => {
-      const itemTotal = item.quantity * item.unit_price;
+      const itemTotal = item.quantity * item.price;
       subtotal += itemTotal;
-      taxTotal += (itemTotal * (item.tax_rate / 100));
+      taxTotal += (itemTotal * ((item.tax_rate || 0) / 100));
     });
   
     const total = subtotal + taxTotal - discount + shipping;
@@ -450,28 +448,30 @@ const state = {
     const paymentMethod = document.getElementById('payment-method').value;
     const customerName = document.getElementById('customer-name').value;
   
-    const subtotal = state.cart.reduce((sum, item) => sum + (item.quantity * item.unit_price), 0);
+    const subtotal = state.cart.reduce((sum, item) => sum + (item.quantity * item.price), 0);
     const taxTotal = state.cart.reduce((sum, item) => {
-      const itemTotal = item.quantity * item.unit_price;
-      return sum + (itemTotal * (item.tax_rate / 100));
+      const itemTotal = item.quantity * item.price;
+      return sum + (itemTotal * ((item.tax_rate || 0) / 100));
     }, 0);
     const total = subtotal + taxTotal - state.discount + state.shipping;
   
     const orderData = {
-      user_id: state.currentUser.id,
       customer_name: customerName,
       customer_phone: '',
       customer_email: '',
       notes: '',
       subtotal,
-      tax_total: taxTotal,
-      discount_total: state.discount,
-      shipping_cost: state.shipping,
+      tax: taxTotal,
+      discount: state.discount,
+      shipping: state.shipping,
       total,
+      payment_method: paymentMethod,
       items: state.cart.map(item => ({
-        ...item,
-        tax: (item.quantity * item.unit_price * (item.tax_rate / 100)),
-        total: item.quantity * item.unit_price
+        product_id: item.product_id,
+        product_name: item.product_name,
+        quantity: item.quantity,
+        price: item.price,
+        subtotal: item.quantity * item.price
       })),
       payments: [{
         amount: total,
