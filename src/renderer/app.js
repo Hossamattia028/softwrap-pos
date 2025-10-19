@@ -332,6 +332,7 @@ const state = {
         <td>
           <button class="btn btn-sm btn-secondary" onclick="editProduct('${product.id}')">${t('edit')}</button>
           <button class="btn btn-sm btn-secondary" onclick="adjustStock('${product.id}')">${t('stock')}</button>
+          <button class="btn btn-sm btn-danger" onclick="deleteProduct('${product.id}')">${t('delete')}</button>
         </td>
       </tr>
     `).join('');
@@ -1395,5 +1396,66 @@ const state = {
       timeout = setTimeout(later, wait);
     };
   }
+
+  // Function to edit product (calls showProductModal)
+  function editProduct(productId) {
+    showProductModal(productId);
+  }
+
+  // Function to delete product
+  async function deleteProduct(productId) {
+    const product = state.products.find(p => p.id === productId);
+    if (!product) return;
+
+    if (!confirm(`Are you sure you want to delete "${product.name}"?`)) {
+      return;
+    }
+
+    const result = await window.API.deleteProduct(productId);
+    if (result.success) {
+      alert('Product deleted successfully!');
+      await loadProducts();
+    } else {
+      alert('Failed to delete product: ' + result.error);
+    }
+  }
+
+  // Function to adjust stock (placeholder - you can implement a modal for this)
+  function adjustStock(productId) {
+    const product = state.products.find(p => p.id === productId);
+    if (!product) return;
+
+    const newStock = prompt(`Current stock: ${product.stock_quantity}\nEnter new stock quantity:`, product.stock_quantity);
+    if (newStock === null) return;
+
+    const stockNum = parseInt(newStock);
+    if (isNaN(stockNum) || stockNum < 0) {
+      alert('Please enter a valid number');
+      return;
+    }
+
+    // Update product stock
+    product.stock_quantity = stockNum;
+    window.API.updateProduct(productId, { ...product, stock_quantity: stockNum })
+      .then(result => {
+        if (result.success) {
+          alert('Stock updated successfully!');
+          loadProducts();
+        } else {
+          alert('Failed to update stock');
+        }
+      });
+  }
+
+  // Make functions globally accessible for onclick handlers
+  window.addToCart = addToCart;
+  window.editProduct = editProduct;
+  window.deleteProduct = deleteProduct;
+  window.adjustStock = adjustStock;
+  window.closeModal = closeModal;
+  window.selectProductImage = selectProductImage;
+  window.showProductModal = showProductModal;
+  window.showExpenseModal = showExpenseModal;
+  window.showUserModal = showUserModal;
   
   
