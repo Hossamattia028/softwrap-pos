@@ -796,18 +796,23 @@ const state = {
     
     const t = (key) => window.translator ? window.translator.t(key) : key;
     
+    console.log('Rendering backups:', backups);
+    
     if (!backups || backups.length === 0) {
       tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;">
-        <div class="empty-state"><h3>No backups yet. Click "Create Backup Now" to create one.</h3></div>
+        <div class="empty-state">
+          <h3>No backups yet</h3>
+          <p>Click "Create Backup Now" button above to create your first backup.</p>
+        </div>
       </td></tr>`;
       return;
     }
   
     tbody.innerHTML = backups.map(backup => `
       <tr>
-        <td>${backup.name}</td>
-        <td>${formatDate(backup.timestamp)}</td>
-        <td><span class="badge ${backup.type === 'auto' ? 'badge-success' : 'badge-warning'}">${backup.type}</span></td>
+        <td>${backup.name || 'Unknown'}</td>
+        <td>${backup.timestamp ? formatDate(backup.timestamp) : 'Unknown'}</td>
+        <td><span class="badge ${backup.type === 'auto' ? 'badge-success' : 'badge-warning'}">${backup.type || 'manual'}</span></td>
         <td>${formatFileSize(backup.size)}</td>
         <td>
           <button class="btn btn-sm btn-secondary" onclick="exportBackup('${backup.name}')">${t('export')}</button>
@@ -960,7 +965,10 @@ const state = {
           <div class="product-image-preview" id="product-image-preview">
             ${imagePreviewHtml}
           </div>
-          <button type="button" class="btn btn-secondary image-upload-btn" onclick="selectProductImage()">${t('choose_image')}</button>
+          <div style="display: flex; align-items: center; gap: 1rem;">
+            <button type="button" class="btn btn-secondary image-upload-btn" onclick="selectProductImage()">${t('choose_image')}</button>
+            ${window.API && window.API.isWeb() ? '<small style="color: #888;">⚠️ Image upload not available in web version (desktop only)</small>' : ''}
+          </div>
           <input type="hidden" name="image_path" id="product-image-path" value="${currentImagePath}">
         </div>
         <div class="form-group">
