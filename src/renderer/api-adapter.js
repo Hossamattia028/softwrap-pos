@@ -6,20 +6,41 @@ const isElectron = typeof window !== 'undefined' && window.electronAPI;
 const API = {
   // Helper function for web API calls
   async callWebAPI(endpoint, method = 'GET', data = null) {
-    const options = {
-      method,
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      credentials: 'include', // Important: Send cookies with requests
-    };
+    try {
+      const options = {
+        method,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include', // Important: Send cookies with requests
+      };
 
-    if (data && method !== 'GET') {
-      options.body = JSON.stringify(data);
+      if (data && method !== 'GET') {
+        options.body = JSON.stringify(data);
+      }
+
+      const response = await fetch(`/api${endpoint}`, options);
+      
+      // Check if response is OK
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        console.error(`API Error (${response.status}):`, errorData);
+        return { 
+          success: false, 
+          error: errorData.error || errorData.message || `Server error: ${response.status}`,
+          message: errorData.error || errorData.message || `Server error: ${response.status}`
+        };
+      }
+      
+      return await response.json();
+    } catch (error) {
+      console.error('API Call Error:', error);
+      return { 
+        success: false, 
+        error: error.message || 'Network error',
+        message: error.message || 'Network error - check if server is running'
+      };
     }
-
-    const response = await fetch(`/api${endpoint}`, options);
-    return await response.json();
   },
 
   // Authentication
