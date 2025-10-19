@@ -778,17 +778,28 @@ const state = {
   // Backup
   async function loadBackups() {
     const result = await window.API.listBackups();
+    console.log('Backups result:', result);
     if (result.success) {
-      renderBackupsTable(result.data);
+      renderBackupsTable(result.data || []);
+    } else {
+      console.error('Failed to load backups:', result);
+      renderBackupsTable([]);
     }
   }
   
   function renderBackupsTable(backups) {
     const tbody = document.querySelector('#backups-table tbody');
+    if (!tbody) {
+      console.error('Backups table body not found');
+      return;
+    }
+    
     const t = (key) => window.translator ? window.translator.t(key) : key;
     
-    if (backups.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="5"><div class="empty-state"><h3>${t('no_results')}</h3></div></td></tr>`;
+    if (!backups || backups.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;">
+        <div class="empty-state"><h3>No backups yet. Click "Create Backup Now" to create one.</h3></div>
+      </td></tr>`;
       return;
     }
   
@@ -810,10 +821,10 @@ const state = {
     
     const result = await window.API.createBackup();
     if (result.success) {
-      alert('Backup created successfully');
-      loadBackups();
+      alert('Backup created successfully!');
+      await loadBackups(); // Reload the backup list
     } else {
-      alert('Error: ' + result.message);
+      alert('Error creating backup: ' + (result.error || result.message || 'Unknown error'));
     }
   }
   

@@ -75,10 +75,24 @@ class BackupManager {
 
       archive.pipe(output);
 
-      // Add database file
-      const dbPath = path.join(this.userDataPath, 'softwrap-pos.db');
-      if (fs.existsSync(dbPath)) {
-        archive.file(dbPath, { name: 'database.db' });
+      // Add database file - try both possible names
+      const dbPaths = [
+        path.join(this.userDataPath, 'database.db'),
+        path.join(this.userDataPath, 'softwrap-pos.db')
+      ];
+      
+      let dbFound = false;
+      for (const dbPath of dbPaths) {
+        if (fs.existsSync(dbPath)) {
+          archive.file(dbPath, { name: 'database.db' });
+          dbFound = true;
+          break;
+        }
+      }
+      
+      if (!dbFound) {
+        archive.on('error', () => {});
+        return reject(new Error('Database file not found'));
       }
 
       // Add settings and config

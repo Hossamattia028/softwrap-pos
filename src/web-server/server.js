@@ -505,8 +505,8 @@ app.post('/api/backup/create', requireAuth, async (req, res) => {
 
 app.get('/api/backup/list', requireAuth, async (req, res) => {
   try {
-    const result = await backupManager.listBackups();
-    res.json(result);
+    const backups = backupManager.listBackups();
+    res.json({ success: true, data: backups });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
   }
