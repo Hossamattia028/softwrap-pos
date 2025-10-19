@@ -74,6 +74,50 @@ class PosDatabase {
     } catch (error) {
       console.error('Expenses migration error:', error);
     }
+
+    // Check and fix order_items table columns
+    try {
+      const orderItemsInfo = this.db.prepare("PRAGMA table_info(order_items)").all();
+      const hasPrice = orderItemsInfo.some(col => col.name === 'price');
+      const hasSubtotal = orderItemsInfo.some(col => col.name === 'subtotal');
+      
+      if (!hasPrice) {
+        console.log('Migrating order_items table - renaming unit_price to price...');
+        // SQLite doesn't support RENAME COLUMN in older versions, so we need to recreate
+        this.db.exec(`
+          CREATE TABLE order_items_new (
+            id TEXT PRIMARY KEY,
+            order_id TEXT NOT NULL,
+            product_id TEXT NOT NULL,
+            product_name TEXT NOT NULL,
+            quantity INTEGER NOT NULL,
+            price REAL NOT NULL,
+            subtotal REAL NOT NULL,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE,
+            FOREIGN KEY (product_id) REFERENCES products(id)
+          );
+          
+          INSERT INTO order_items_new (id, order_id, product_id, product_name, quantity, price, subtotal, created_at)
+          SELECT id, order_id, product_id, product_name, quantity, 
+                 COALESCE(unit_price, 0) as price, 
+                 COALESCE(total, quantity * COALESCE(unit_price, 0)) as subtotal,
+                 created_at
+          FROM order_items;
+          
+          DROP TABLE order_items;
+          ALTER TABLE order_items_new RENAME TO order_items;
+        `);
+        console.log('Order items table migration completed');
+      } else if (!hasSubtotal) {
+        console.log('Adding subtotal column to order_items...');
+        this.db.exec('ALTER TABLE order_items ADD COLUMN subtotal REAL DEFAULT 0');
+        this.db.exec('UPDATE order_items SET subtotal = quantity * price WHERE subtotal = 0');
+      }
+    } catch (error) {
+      console.error('Order items migration error:', error);
+      console.log('If migration failed, try deleting your local database to start fresh');
+    }
   }
 
   createTables() {
